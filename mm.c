@@ -24,7 +24,7 @@
  ********************************************************/
 team_t team = {
     /* Team name */
-    "WAF",
+    "Coding Never Giveup",
     /* First member's full name */
     "Fu Yuan",
     /* First member's email address */
@@ -95,8 +95,31 @@ void *mm_realloc(void *ptr, size_t size)
     return newptr;
 }
 
+/* void *find_fit(size_t asize)
+{
+    char *bp;
+    for(bp=heap_listp;GET_SIZE(HDRP(bp))>0;bp=NEXT_BLKP(bp)){
+        if(!GET_ALLOCA(HDRP(bp))&&GET_SIZE(HDRP(bp))>=asize){
+            return bp;
+        }
+    }
+} */
 
-
+/* static void place(void *bp,size_t asize)
+{
+    size_t origin_size=GET_SIZE(HDRP(bp));
+    size_t next_size=origin_size-asize;
+    if(next_size>16){
+        PUT(HDRP(bp),PACK(asize,1));
+        PUT(FTRP(bp),PACK(asize,1));
+        bp=NEXT_BLKP(bp);
+        PUT(HDRP(bp),PACK(next_size,0));
+        PUT(FTRP(bp),PACK(next_size,0));
+    }else{
+        PUT(HDRP(bp),PACK(origin_size,0));
+        PUT(FTRP(bp),PACK(origin_size,0));
+    }
+} */
 
 
 
