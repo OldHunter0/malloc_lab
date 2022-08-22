@@ -68,7 +68,18 @@ team_t team = {
 #define NEXT_BLKP(bp) ((char*)(bp) + GET_SIZE(((char*)(bp)-WSIZE)))
 #define PREV_BLKP(bp) ((char*)(bp)-GET_SIZE(((char*)(bp)-DSIZE)))
 
-/*Explicit free list,LIFO */
+/*Explicit free list,LIFO
+Given free block ptr bp, compute address of next and previous free blocks in
+free list*/
+#define NEXT_FREE(bp) (GET((char*)(bp) + WSIZE))
+#define PREV_FREE(bp) (GET(bp))
+
+/* Given free block ptr bp, set the address of next and previous free blocks*/
+#define SET_NEXT_FREE(bp,addr) PUT(((char*)(bp) + WSIZE), addr)
+#define SET_PREV_FREE(bp, addr) PUT(bp, addr)
+
+void *free_list_head;
+void *free_list_tail;
 
 /* 
  * mm_init - initialize the malloc package.
@@ -120,6 +131,21 @@ void *mm_realloc(void *ptr, size_t size)
     memcpy(newptr, oldptr, copySize);
     mm_free(oldptr);
     return newptr;
+}
+
+/* Given a block ptr bp, remove it from the explicit free list*/
+void free_list_remove(void* bp)
+{
+    void* next = NEXT_FREE(bp);
+    void* prev = PREV_FREE(bp);
+    SET_NEXT_FREE(prev, next);
+    SET_PREV_FREE(next, prev);
+}
+
+/* Given a new free block ptr bp, add it  */
+void free_list_add(void* bp)
+{
+    
 }
 
 /* void *find_fit(size_t asize)
