@@ -35,34 +35,42 @@ team_t team = {
     ""
 };
 
-/* single word (4) or double word (8) alignment */
-#define ALIGNMENT 8
+/*
+ * If NEXT_FIT defined use next fit search, else use first-fit search
+ */
+#define NEXT_FITx
 
-/* rounds up to the nearest multiple of ALIGNMENT */
-#define ALIGN(size) (((size) + (ALIGNMENT-1)) & ~0x7)
+/* $begin mallocmacros */
+/* Basic constants and macros */
+#define WSIZE       4       /* Word and header/footer size (bytes) */ //line:vm:mm:beginconst
+#define DSIZE       8       /* Double word size (bytes) */
+#define CHUNKSIZE  (1<<12)  /* Extend heap by this amount (bytes) */  //line:vm:mm:endconst
 
-#define SIZE_T_SIZE (ALIGN(sizeof(size_t)))
+#define MAX(x, y) ((x) > (y)? (x) : (y))
 
-#define WSIZE 4
-#define DSIZE 8
-#define CHUNKSIZE (1 << 12)
-
-#define MAX(x, y) ((x) > (y) ? (x) : (y))
-
- /* Pack a size and allocated bit into a word */
-#define PACK(size, alloc) ((size) | (alloc))
+/* Pack a size and allocated bit into a word */
+#define PACK(size, alloc)  ((size) | (alloc)) //line:vm:mm:pack
 
 /* Read and write a word at address p */
-#define GET(p) (*(unsigned int*)(p))
-#define PUT(p, val) (*(unsigned int*)(p) = (val))
+#define GET(p)       (*(unsigned int *)(p))            //line:vm:mm:get
+#define PUT(p, val)  (*(unsigned int *)(p) = (val))    //line:vm:mm:put
 
 /* Read the size and allocated fields from address p */
-#define GET_SIZE(p) (GET(p) & ~0x7)
-#define GET_ALLOC(p) (GET(p) & 0x1)
+#define GET_SIZE(p)  (GET(p) & ~0x7)                   //line:vm:mm:getsize
+#define GET_ALLOC(p) (GET(p) & 0x1)                    //line:vm:mm:getalloc
 
 /* Given block ptr bp, compute address of its header and footer */
-#define HDRP(bp) ((char*)(bp)-WSIZE)
-#define FTRP(bp) ((char*)(bp) + GET_SIZE(HDRP(bp)) - DSIZE)
+#define HDRP(bp)       ((char *)(bp) - WSIZE)                      //line:vm:mm:hdrp
+#define FTRP(bp)       ((char *)(bp) + GET_SIZE(HDRP(bp)) - DSIZE) //line:vm:mm:ftrp
+
+/* Given block ptr bp, compute address of next and previous blocks */
+#define NEXT_BLKP(bp)  ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE))) //line:vm:mm:nextblkp
+#define PREV_BLKP(bp)  ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE))) //line:vm:mm:prevblkp
+/* $end mallocmacros */
+
+/* Global variables */
+static char *heap_listp = 0;  /* Pointer to first block */
+
 
 /* Given block ptr bp, compute address of next and previous blocks */
 #define NEXT_BLKP(bp) ((char*)(bp) + GET_SIZE(((char*)(bp)-WSIZE)))
@@ -78,15 +86,18 @@ free list*/
 #define SET_NEXT_FREE(bp,addr) PUT(((char*)(bp) + WSIZE), addr)
 #define SET_PREV_FREE(bp, addr) PUT(bp, addr)
 
-void *free_list_head;
-void *free_list_tail;
-
+static void *free_list_head;
+static void *free_list_tail;
+static void *heap_listp;
 /* 
  * mm_init - initialize the malloc package.
  */
 int mm_init(void)
 {
-
+    SET_NEXT_FREE(free_list_head,free_list_tail);
+    SET_PREV_FREE(free_list_tail,free_list_head);
+    if ((heap_listp = mem_sbrk(4*WSIZE)) == (void *)-1) //line:vm:mm:begininit
+        return -1;
     return 0;
 }
 
@@ -111,10 +122,11 @@ void *mm_malloc(size_t size)
  */
 void mm_free(void *ptr)
 {
+
 }
 
 /*
- * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
+ * mm_realloc - don't write it at the first
  */
 void *mm_realloc(void *ptr, size_t size)
 {
@@ -142,10 +154,14 @@ void free_list_remove(void* bp)
     SET_PREV_FREE(next, prev);
 }
 
-/* Given a new free block ptr bp, add it  */
+/* Given a new free block ptr bp, add it to the head of free list*/
 void free_list_add(void* bp)
 {
-    
+    void* next=NEXT_FREE(free_list_head);
+    SET_NEXT_FREE(free_list_head,bp);
+    SET_PREV_FREE(next,bp);
+    SET_NEXT_FREE(bp,next);
+    SET_PREV_FREE(bp,free_list_head);
 }
 
 /* void *find_fit(size_t asize)
